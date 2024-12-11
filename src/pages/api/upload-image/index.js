@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const form = formidable({ multiples: false }); // Atualizado para a nova API
 
-    form.uploadDir = path.join(process.cwd(), '/uploads'); // Diretório temporário para uploads
+    form.uploadDir = path.join(process.cwd(), '/tmp'); // Diretório temporário para uploads
     form.keepExtensions = true; // Manter a extensão do arquivo
 
     form.parse(req, async (err, fields, files) => {
