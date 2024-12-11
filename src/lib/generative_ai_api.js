@@ -1,5 +1,6 @@
 // lib/generativeLanguageApi.js
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+import crypto from "crypto"; // Para gerar um hash único para cada imagem
 import fs from "fs";
 
 // Access your API key as an environment variable
@@ -7,28 +8,43 @@ function fileToGenerativePart(path, mimeType) {
   return {
     inlineData: {
       data: Buffer.from(fs.readFileSync(path)).toString("base64"),
-      mimeType
+      mimeType,
     },
   };
 }
 
+// Objeto em memória para armazenar o cache
+const imageCache = {};
+
 class GenerativeLanguageApi {
   constructor(apiKey) {
     this.apiKey = apiKey;
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+    this.baseUrl =
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
     this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
   }
 
   async uploadImageGenerateContent(imagePath) {
-    console.log(imagePath)
-    const filePart1  = fileToGenerativePart(imagePath, "image/jpeg");
+    // Gerar um hash único para a imagem com base no conteúdo do arquivo
+    const imageHash = crypto
+      .createHash("sha256")
+      .update(fs.readFileSync(imagePath))
+      .digest("hex");
 
-    const imageParts = [
-      filePart1
-    ];
+    // Verificar se o resultado já está no cache
+    if (imageCache[imageHash]) {
+      console.log("Cache hit for image:", imageHash);
+      return imageCache[imageHash];
+    }
 
-    const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const hoje = new Date().toISOString().split('T')[0];
+    const filePart1 = fileToGenerativePart(imagePath, "image/jpeg");
+
+    const imageParts = [filePart1];
+
+    const model = this.genAI.getGenerativeModel({
+      model: "gemini-1.5-flash-latest",
+    });
+    const hoje = new Date().toISOString().split("T")[0];
 
     const prompt = `
     Você é uma IA especializada em leitura e extração de informações de cupons fiscais. Sua tarefa é analisar o texto de um cupom fiscal e retornar as informações no formato JSON especificado abaixo. Caso alguma informação não seja encontrada no cupom, insira o valor 'Nao encontrado'. Certifique-se de seguir o formato JSON fornecido:
@@ -74,14 +90,17 @@ class GenerativeLanguageApi {
       "total": 250.0
     }
     Agora, analise o seguinte texto de um cupom fiscal e retorne o JSON correspondente. Sem formatação`;
-    
-    const result = await model.generateContent([
-      prompt,
-      ...imageParts
-    ]);
-    
-    return JSON.parse(result.response.text().replace('```json', '').replace('```', ''))
-  }
 
+    const result = await model.generateContent([prompt, ...imageParts]);
+
+    // Processar o resultado e armazenar no cache
+    const parsedResult = JSON.parse(
+      result.response.text().replace("```json", "").replace("```", "")
+    );
+    imageCache[imageHash] = parsedResult;
+
+    return parsedResult;
+  }
 }
+
 export default GenerativeLanguageApi;

@@ -13,9 +13,14 @@ export const config = {
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
-    const form = formidable({ multiples: false }); // Atualizado para a nova API
+    // Garantir que o diretório /tmp exista
+    const tempDir = '/tmp'; // Use um diretório local para desenvolvimento
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
 
-    form.uploadDir = '/tmp'; // Diretório temporário para uploads
+    const form = formidable({ multiples: false }); // Atualizado para a nova API
+    form.uploadDir = tempDir; // Diretório temporário para uploads
     form.keepExtensions = true; // Manter a extensão do arquivo
 
     form.parse(req, async (err, fields, files) => {

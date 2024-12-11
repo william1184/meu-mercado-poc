@@ -34,11 +34,14 @@ export default function Home() {
       const json = await res.json();
 
       // Atualiza a lista de compras com os dados retornados
-      if (json) {
+
+      if (json && json.data) {
         const updatedCompras = [...compras, json.data];
         setCompras(updatedCompras);
         localStorage.setItem('compras', JSON.stringify(updatedCompras));
+        return
       }
+      throw Error('Contrato invalido')
     } catch (error) {
       console.error('Erro:', error);
     } finally {
@@ -120,9 +123,8 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full p-2 text-white rounded ${
-                  loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
-                }`}
+                className={`w-full p-2 text-white rounded ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
+                  }`}
               >
                 {loading ? 'Processando...' : 'Enviar'}
               </button>
